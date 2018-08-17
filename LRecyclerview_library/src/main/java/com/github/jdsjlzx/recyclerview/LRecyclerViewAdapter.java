@@ -155,13 +155,19 @@ public class LRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.View
 
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-
+        //HeaderViews和FooterViews都在adapter里保存,不需要recycle,而且在多RecyclerView共用RecyclerPool时会导致recycler返回正在使用的HeaderView和FooterView
         if (viewType == TYPE_REFRESH_HEADER) {
-            return new ViewHolder(mRefreshHeader.getHeaderView());
+            ViewHolder vHolder = new ViewHolder(mRefreshHeader.getHeaderView());
+            vHolder.setIsRecyclable(false);
+            return vHolder;
         } else if (isHeaderType(viewType)) {
-            return new ViewHolder(getHeaderViewByType(viewType));
+            ViewHolder vHolder = new ViewHolder(getHeaderViewByType(viewType));
+            vHolder.setIsRecyclable(false);
+            return vHolder;
         } else if (viewType == TYPE_FOOTER_VIEW) {
-            return new ViewHolder(mFooterViews.get(0));
+            ViewHolder vHolder = new ViewHolder(mFooterViews.get(0));
+            vHolder.setIsRecyclable(false);
+            return vHolder;
         }
         return mInnerAdapter.onCreateViewHolder(parent, viewType);
     }
