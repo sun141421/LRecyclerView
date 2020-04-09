@@ -1,5 +1,7 @@
 package com.github.jdsjlzx.recyclerview;
 
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
@@ -21,7 +23,7 @@ public class LuRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.Vie
     private static final int TYPE_NORMAL = 0;
     private static final int TYPE_FOOTER_VIEW = 10001;
     private static final int HEADER_INIT_INDEX = 10002;
-    private static List<Integer> mHeaderTypes = new ArrayList<>();
+    private List<Integer> mHeaderTypes = new ArrayList<>();
 
 
     private OnItemClickListener mOnItemClickListener;
@@ -142,9 +144,11 @@ public class LuRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerView.Vie
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 
         if (isHeaderType(viewType)) {
-            return new ViewHolder(getHeaderViewByType(viewType));
+            ViewHolder viewHolder = new ViewHolder(getHeaderViewByType(viewType));
+            return viewHolder;
         } else if (viewType == TYPE_FOOTER_VIEW) {
-            return new ViewHolder(mFooterViews.get(0));
+            ViewHolder viewHolder = new ViewHolder(mFooterViews.get(0));
+            return viewHolder;
         }
         return mInnerAdapter.onCreateViewHolder(parent, viewType);
     }

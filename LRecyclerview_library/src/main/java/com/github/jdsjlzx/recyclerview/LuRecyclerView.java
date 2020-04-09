@@ -9,7 +9,9 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewParent;
 
 import com.github.jdsjlzx.interfaces.ILoadMoreFooter;
@@ -25,6 +27,8 @@ import com.github.jdsjlzx.view.LoadingFooter;
  */
 public class LuRecyclerView extends RecyclerView {
     private boolean mLoadMoreEnabled = true;
+    /** 是否手动点击加载更多 */
+    private boolean mIsManualLoadMore = false;
     private boolean mRefreshing = false;//是否正在下拉刷新
     private boolean mLoadingData = false;//是否正在加载数据
     private boolean flag = false;//标记是否setAdapter
@@ -39,6 +43,7 @@ public class LuRecyclerView extends RecyclerView {
 
     private LuRecyclerViewAdapter mWrapAdapter;
     private boolean isNoMore = false;
+    private boolean isCritical = false;
     //scroll variables begin
     /**
      * 当前RecyclerView类型
@@ -104,10 +109,8 @@ public class LuRecyclerView extends RecyclerView {
 
     private void init() {
         if (mLoadMoreEnabled) {
-            setLoadMoreFooter(new LoadingFooter(getContext().getApplicationContext()));
+            setLoadMoreFooter(new LoadingFooter(getContext().getApplicationContext()),false);
         }
-
-
     }
 
     @Override
@@ -218,10 +221,10 @@ public class LuRecyclerView extends RecyclerView {
     }
 
     /**
-     *
      * @param pageSize 一页加载的数量
      */
     public void refreshComplete(int pageSize) {
+        Log.e("lzx","refreshComplete  pageSize " + pageSize );
         this.mPageSize = pageSize;
         if (mRefreshing) {
             isNoMore = false;
@@ -233,7 +236,78 @@ public class LuRecyclerView extends RecyclerView {
             mLoadingData = false;
             mLoadMoreFooter.onComplete();
         }
+        //处理特殊情况 最后一行显示出来了加载更多的view的一部分
+        if (mWrapAdapter.getInnerAdapter().getItemCount() == mPageSize) {
+            isCritical = true;
+        } else {
+            isCritical = false;
+        }
+    }
 
+    /**
+     * @param pageSize 一页加载的数量
+     * @param total 总数
+     */
+    public void refreshComplete(int pageSize, int total) {
+        this.mPageSize = pageSize;
+        if (mRefreshing) {
+            isNoMore = false;
+            mRefreshing = false;
+            if(mWrapAdapter.getInnerAdapter().getItemCount() < pageSize) {
+                mFootView.setVisibility(GONE);
+            }
+        } else if (mLoadingData) {
+            mLoadingData = false;
+            mLoadMoreFooter.onComplete();
+        }
+        if (pageSize < total) {
+            isNoMore = false;
+        }
+        //处理特殊情况 最后一行显示出来了加载更多的view的一部分
+        if (mWrapAdapter.getInnerAdapter().getItemCount() == mPageSize) {
+            isCritical = true;
+        } else {
+            isCritical = false;
+        }
+    }
+
+    /**
+     * 此方法主要是为了满足数据不满一屏幕或者数据小于pageSize的情况下，是否显示footview
+     * 在分页情况下使用refreshComplete(int pageSize, int total, boolean false)就相当于refreshComplete(int pageSize, int total)
+     * @param pageSize 一页加载的数量
+     * @param total 总数
+     * @param isShowFootView 是否需要显示footview（前提条件是：getItemCount() < pageSize）
+     */
+    public void refreshComplete(int pageSize, int total, boolean isShowFootView) {
+        this.mPageSize = pageSize;
+        if (mRefreshing) {
+            isNoMore = false;
+            mRefreshing = false;
+            if (isShowFootView) {
+                mFootView.setVisibility(VISIBLE);
+            } else {
+                if(mWrapAdapter.getInnerAdapter().getItemCount() < pageSize) {
+                    mFootView.setVisibility(GONE);
+                    mWrapAdapter.removeFooterView();
+                } else {
+                    if (mWrapAdapter.getFooterViewsCount() == 0) {
+                        mWrapAdapter.addFooterView(mFootView);
+                    }
+                }
+            }
+        } else if (mLoadingData) {
+            mLoadingData = false;
+            mLoadMoreFooter.onComplete();
+        }
+        if (pageSize < total) {
+            isNoMore = false;
+        }
+        //处理特殊情况 最后一行显示出来了加载更多的view的一部分
+        if (mWrapAdapter.getInnerAdapter().getItemCount() == mPageSize) {
+            isCritical = true;
+        } else {
+            isCritical = false;
+        }
     }
 
     /**
@@ -244,7 +318,31 @@ public class LuRecyclerView extends RecyclerView {
         mLoadingData = false;
         isNoMore = noMore;
         if(isNoMore) {
+            mFootView.setVisibility(VISIBLE);
             mLoadMoreFooter.onNoMore();
+            Log.e("lzx","setNoMore true ");
+        } else {
+            mLoadMoreFooter.onComplete();
+        }
+    }
+
+    /**
+     * 设置是否已加载全部
+     * @param noMore
+     * @param isShowFootView
+     */
+    public void setNoMore(boolean noMore, boolean isShowFootView){
+        mLoadingData = false;
+        isNoMore = noMore;
+        if(isNoMore) {
+            if (isShowFootView) {
+                mFootView.setVisibility(VISIBLE);
+            } else {
+                mFootView.setVisibility(GONE);
+                mWrapAdapter.removeFooterView();
+            }
+            mLoadMoreFooter.onNoMore();
+            Log.e("lzx","setNoMore true ");
         } else {
             mLoadMoreFooter.onComplete();
         }
@@ -252,11 +350,33 @@ public class LuRecyclerView extends RecyclerView {
 
     /**
      * 设置自定义的footerview
+     * @param loadMoreFooter
+     * @param isCustom 是否自定义footview
      */
-    public void setLoadMoreFooter(ILoadMoreFooter loadMoreFooter) {
+    public void setLoadMoreFooter(ILoadMoreFooter loadMoreFooter, boolean isCustom) {
         this.mLoadMoreFooter = loadMoreFooter;
+        if (isCustom) {
+            if (null != mWrapAdapter && mWrapAdapter.getFooterViewsCount() >0) {
+                mWrapAdapter.removeFooterView();
+            }
+        }
         mFootView = loadMoreFooter.getFootView();
-        mFootView.setVisibility(GONE);
+        mFootView.setVisibility(VISIBLE);
+
+        //wxm:mFootView inflate的时候没有以RecyclerView为parent，所以要设置LayoutParams
+        ViewGroup.LayoutParams layoutParams = mFootView.getLayoutParams();
+        if (layoutParams != null) {
+            mFootView.setLayoutParams(new LayoutParams(layoutParams));
+        } else {
+            mFootView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
+        }
+
+        if (isCustom) {
+            if (mLoadMoreEnabled && mWrapAdapter.getFooterViewsCount()==0) {
+                mWrapAdapter.addFooterView(mFootView);
+            }
+        }
+
     }
 
     /**
@@ -268,16 +388,23 @@ public class LuRecyclerView extends RecyclerView {
         }
         mLoadMoreEnabled = enabled;
         if (!enabled) {
-            if (null != mWrapAdapter) {
-                mWrapAdapter.removeFooterView();
-            } else {
-                mLoadMoreFooter.onReset();
-            }
+            mWrapAdapter.removeFooterView();
         }
     }
 
+    /**
+     * 滑动到底手动点击加载
+     */
+    public void setManualLoadMore(boolean enabled) {
+        if(mWrapAdapter == null){
+            throw new NullPointerException("mWrapAdapter cannot be null, please make sure the variable mWrapAdapter have been initialized.");
+        }
+        mIsManualLoadMore = enabled;
+
+    }
+
     public void setLoadingMoreProgressStyle(int style) {
-        if (mLoadMoreFooter != null && mLoadMoreFooter instanceof LoadingFooter) {
+        if (mLoadMoreFooter instanceof LoadingFooter) {
             ((LoadingFooter) mLoadMoreFooter).setProgressStyle(style);
         }
 
@@ -288,19 +415,11 @@ public class LuRecyclerView extends RecyclerView {
     }
 
     public void setOnNetWorkErrorListener(final OnNetWorkErrorListener listener) {
-        final LoadingFooter loadingFooter = ((LoadingFooter) mFootView);
-        loadingFooter.setState(LoadingFooter.State.NetWorkError);
-        loadingFooter.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mLoadMoreFooter.onLoading();
-                listener.reload();
-            }
-        });
+        mLoadMoreFooter.setNetworkErrorViewClickListener(listener);
     }
 
     public void setFooterViewHint(String loading, String noMore, String noNetWork) {
-        if (mLoadMoreFooter != null && mLoadMoreFooter instanceof LoadingFooter) {
+        if (mLoadMoreFooter instanceof LoadingFooter) {
             LoadingFooter loadingFooter = ((LoadingFooter) mLoadMoreFooter);
             loadingFooter.setLoadingHint(loading);
             loadingFooter.setNoMoreHint(noMore);
@@ -315,7 +434,7 @@ public class LuRecyclerView extends RecyclerView {
      * @param backgroundColor
      */
     public void setFooterViewColor(int indicatorColor, int hintColor, int backgroundColor) {
-        if (mLoadMoreFooter != null && mLoadMoreFooter instanceof LoadingFooter) {
+        if (mLoadMoreFooter instanceof LoadingFooter) {
             LoadingFooter loadingFooter = ((LoadingFooter) mLoadMoreFooter);
             loadingFooter.setIndicatorColor(ContextCompat.getColor(getContext(),indicatorColor));
             loadingFooter.setHintTextColor(hintColor);
@@ -379,6 +498,8 @@ public class LuRecyclerView extends RecyclerView {
                 staggeredGridLayoutManager.findFirstCompletelyVisibleItemPositions(lastPositions);
                 firstVisibleItemPosition = findMax(lastPositions);
                 break;
+            default:
+                break;
         }
 
         // 根据类型来计算出第一个可见的item的位置，由此判断是否触发到底部的监听器
@@ -397,25 +518,36 @@ public class LuRecyclerView extends RecyclerView {
             mLScrollListener.onScrolled(mScrolledXDistance, mScrolledYDistance);
         }
 
-        if (mLoadMoreListener != null && mLoadMoreEnabled) {
-            int visibleItemCount = layoutManager.getChildCount();
-            int totalItemCount = layoutManager.getItemCount();
-            if (visibleItemCount > 0
-                    && lastVisibleItemPosition >= totalItemCount - 1
-                    && totalItemCount > visibleItemCount
-                    && !isNoMore
-                    && !mRefreshing) {
+        //如果想要滑动到底部自动加载更多，mIsManualLoadMore必须为false
+        if (mIsManualLoadMore) {
+            if (!isNoMore) {
+                Log.e("lzx","onScrooo set visible");
+                mLoadingData = true;
+                mLoadMoreFooter.setOnClickLoadMoreListener(mLoadMoreListener);
+            }
 
-                mFootView.setVisibility(View.VISIBLE);
-                if (!mLoadingData) {
-                    mLoadingData = true;
-                    mLoadMoreFooter.onLoading();
-                    mLoadMoreListener.onLoadMore();
+        } else {
+            if (mLoadMoreListener != null && mLoadMoreEnabled) {
+                int visibleItemCount = layoutManager.getChildCount();
+                int totalItemCount = layoutManager.getItemCount();
+                if (visibleItemCount > 0
+                        && lastVisibleItemPosition >= totalItemCount - 1
+                        && (isCritical ? totalItemCount >= visibleItemCount : totalItemCount > visibleItemCount)
+                        && !isNoMore
+                        && !mRefreshing) {
+
+                    mFootView.setVisibility(View.VISIBLE);
+                    if (!mLoadingData) {
+                        mLoadingData = true;
+                        mLoadMoreFooter.onLoading();
+                        mLoadMoreListener.onLoadMore();
+                    }
+
                 }
 
             }
-
         }
+
     }
 
     @Override
