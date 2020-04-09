@@ -9,11 +9,13 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.widget.LinearLayout;
 
 import com.github.jdsjlzx.interfaces.ILoadMoreFooter;
 import com.github.jdsjlzx.interfaces.IRefreshHeader;
@@ -51,6 +53,7 @@ public class LRecyclerView extends RecyclerView {
 
     private LRecyclerViewAdapter mWrapAdapter;
     private boolean isNoMore = false;
+    private boolean isCritical = false;
     private boolean mIsVpDragger;
     private int mTouchSlop;
     private float startY;
@@ -126,9 +129,8 @@ public class LRecyclerView extends RecyclerView {
         }
 
         if (mLoadMoreEnabled) {
-            setLoadMoreFooter(new LoadingFooter(getContext().getApplicationContext()));
+            setLoadMoreFooter(new LoadingFooter(getContext().getApplicationContext()),false);
         }
-
 
     }
 
@@ -372,12 +374,95 @@ public class LRecyclerView extends RecyclerView {
 
             if(mWrapAdapter.getInnerAdapter().getItemCount() < pageSize) {
                 mFootView.setVisibility(GONE);
+                mWrapAdapter.removeFooterView();
+            } else {
+                if (mWrapAdapter.getFooterViewsCount() == 0) {
+                    mWrapAdapter.addFooterView(mFootView);
+                }
             }
         } else if (mLoadingData) {
             mLoadingData = false;
             mLoadMoreFooter.onComplete();
         }
+        //visibleItemCount 10 lastVisibleItemPosition 9 totalItemCount 11 isNoMore false mRefreshing false
+        //处理特殊情况 最后一行显示出来了加载更多的view的一部分
+        if (mWrapAdapter.getInnerAdapter().getItemCount() == mPageSize) {
+            isCritical = true;
+        } else {
+            isCritical = false;
+        }
+    }
 
+    /**
+     * @param pageSize 一页加载的数量
+     * @param total 总数
+     */
+    public void refreshComplete(int pageSize, int total) {
+        this.mPageSize = pageSize;
+        if (mRefreshing) {
+            mRefreshing = false;
+            mRefreshHeader.refreshComplete();
+
+            if(mWrapAdapter.getInnerAdapter().getItemCount() < pageSize) {
+                mFootView.setVisibility(GONE);
+                mWrapAdapter.removeFooterView();
+            } else {
+                if (mWrapAdapter.getFooterViewsCount() == 0) {
+                    mWrapAdapter.addFooterView(mFootView);
+                }
+            }
+        } else if (mLoadingData) {
+            mLoadingData = false;
+            mLoadMoreFooter.onComplete();
+        }
+        if (pageSize < total) {
+            isNoMore = false;
+        }
+        //处理特殊情况 最后一行显示出来了加载更多的view的一部分
+        if (mWrapAdapter.getInnerAdapter().getItemCount() == mPageSize) {
+            isCritical = true;
+        } else {
+            isCritical = false;
+        }
+    }
+
+    /**
+     * 此方法主要是为了满足数据不满一屏幕或者数据小于pageSize的情况下，是否显示footview
+     * 在分页情况下使用refreshComplete(int pageSize, int total, boolean false)就相当于refreshComplete(int pageSize, int total)
+     * @param pageSize 一页加载的数量
+     * @param total 总数
+     * @param isShowFootView  是否需要显示footview（前提条件是：getItemCount() < pageSize）
+     */
+    public void refreshComplete(int pageSize, int total, boolean isShowFootView) {
+        this.mPageSize = pageSize;
+        if (mRefreshing) {
+            mRefreshing = false;
+            mRefreshHeader.refreshComplete();
+            if (isShowFootView) {
+                mFootView.setVisibility(VISIBLE);
+            } else {
+                if(mWrapAdapter.getInnerAdapter().getItemCount() < pageSize) {
+                    mFootView.setVisibility(GONE);
+                    mWrapAdapter.removeFooterView();
+                } else {
+                    if (mWrapAdapter.getFooterViewsCount() == 0) {
+                        mWrapAdapter.addFooterView(mFootView);
+                    }
+                }
+            }
+        } else if (mLoadingData) {
+            mLoadingData = false;
+            mLoadMoreFooter.onComplete();
+        }
+        if (pageSize < total) {
+            isNoMore = false;
+        }
+        //处理特殊情况 最后一行显示出来了加载更多的view的一部分
+        if (mWrapAdapter.getInnerAdapter().getItemCount() == mPageSize) {
+            isCritical = true;
+        } else {
+            isCritical = false;
+        }
     }
 
     /**
@@ -389,6 +474,7 @@ public class LRecyclerView extends RecyclerView {
         isNoMore = noMore;
         if(isNoMore) {
             mLoadMoreFooter.onNoMore();
+            mFootView.setVisibility(VISIBLE);
         } else {
             mLoadMoreFooter.onComplete();
         }
@@ -407,11 +493,18 @@ public class LRecyclerView extends RecyclerView {
 
     /**
      * 设置自定义的footerview
+     * @param loadMoreFooter
+     * @param isCustom 是否自定义footview
      */
-    public void setLoadMoreFooter(ILoadMoreFooter loadMoreFooter) {
+    public void setLoadMoreFooter(ILoadMoreFooter loadMoreFooter, boolean isCustom) {
         this.mLoadMoreFooter = loadMoreFooter;
+        if (isCustom) {
+            if (null != mWrapAdapter && mWrapAdapter.getFooterViewsCount() >0) {
+                mWrapAdapter.removeFooterView();
+            }
+        }
         mFootView = loadMoreFooter.getFootView();
-        mFootView.setVisibility(GONE);
+        mFootView.setVisibility(VISIBLE);
 
         //wxm:mFootView inflate的时候没有以RecyclerView为parent，所以要设置LayoutParams
         ViewGroup.LayoutParams layoutParams = mFootView.getLayoutParams();
@@ -420,6 +513,13 @@ public class LRecyclerView extends RecyclerView {
         } else {
             mFootView.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
         }
+
+        if (isCustom) {
+            if (mLoadMoreEnabled && mWrapAdapter.getFooterViewsCount()==0) {
+                mWrapAdapter.addFooterView(mFootView);
+            }
+        }
+
     }
 
     public void setPullRefreshEnabled(boolean enabled) {
@@ -435,28 +535,24 @@ public class LRecyclerView extends RecyclerView {
         }
         mLoadMoreEnabled = enabled;
         if (!enabled) {
-            if (null != mWrapAdapter) {
-                mWrapAdapter.removeFooterView();
-            } else {
-                mLoadMoreFooter.onReset();
-            }
+            mWrapAdapter.removeFooterView();
         }
     }
 
     public void setRefreshProgressStyle(int style) {
-        if (mRefreshHeader != null && mRefreshHeader instanceof ArrowRefreshHeader) {
+        if (mRefreshHeader instanceof ArrowRefreshHeader) {
             ((ArrowRefreshHeader) mRefreshHeader).setProgressStyle(style);
         }
     }
 
     public void setArrowImageView(int resId) {
-        if (mRefreshHeader != null && mRefreshHeader instanceof ArrowRefreshHeader) {
+        if (mRefreshHeader instanceof ArrowRefreshHeader) {
             ((ArrowRefreshHeader) mRefreshHeader).setArrowImageView(resId);
         }
     }
 
     public void setLoadingMoreProgressStyle(int style) {
-        if (mLoadMoreFooter != null && mLoadMoreFooter instanceof LoadingFooter) {
+        if (mLoadMoreFooter instanceof LoadingFooter) {
             ((LoadingFooter) mLoadMoreFooter).setProgressStyle(style);
         }
 
@@ -471,19 +567,18 @@ public class LRecyclerView extends RecyclerView {
     }
 
     public void setOnNetWorkErrorListener(final OnNetWorkErrorListener listener) {
-        final LoadingFooter loadingFooter = ((LoadingFooter) mFootView);
-        loadingFooter.setState(LoadingFooter.State.NetWorkError);
-        loadingFooter.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mLoadMoreFooter.onLoading();
-                listener.reload();
-            }
-        });
+        mLoadMoreFooter.setNetworkErrorViewClickListener(listener);
     }
 
+    /**
+     * 请使用自定义LoadingFooter的方式实现
+     * @param loading
+     * @param noMore
+     * @param noNetWork
+     */
+    @Deprecated
     public void setFooterViewHint(String loading, String noMore, String noNetWork) {
-        if (mLoadMoreFooter != null && mLoadMoreFooter instanceof LoadingFooter) {
+        if (mLoadMoreFooter instanceof LoadingFooter) {
             LoadingFooter loadingFooter = ((LoadingFooter) mLoadMoreFooter);
             loadingFooter.setLoadingHint(loading);
             loadingFooter.setNoMoreHint(noMore);
@@ -492,13 +587,15 @@ public class LRecyclerView extends RecyclerView {
     }
 
     /**
+     * 本方法不再推荐使用，请使用自定义LoadingFooter的方式实现
      * 设置Footer文字颜色
      * @param indicatorColor
      * @param hintColor
      * @param backgroundColor
      */
+    @Deprecated
     public void setFooterViewColor(int indicatorColor, int hintColor, int backgroundColor) {
-        if (mLoadMoreFooter != null && mLoadMoreFooter instanceof LoadingFooter) {
+        if (mLoadMoreFooter instanceof LoadingFooter) {
             LoadingFooter loadingFooter = ((LoadingFooter) mLoadMoreFooter);
             loadingFooter.setIndicatorColor(ContextCompat.getColor(getContext(),indicatorColor));
             loadingFooter.setHintTextColor(hintColor);
@@ -513,7 +610,7 @@ public class LRecyclerView extends RecyclerView {
      * @param backgroundColor
      */
     public void setHeaderViewColor(int indicatorColor, int hintColor, int backgroundColor) {
-        if (mRefreshHeader != null && mRefreshHeader instanceof ArrowRefreshHeader) {
+        if (mRefreshHeader instanceof ArrowRefreshHeader) {
             ArrowRefreshHeader arrowRefreshHeader = ((ArrowRefreshHeader) mRefreshHeader);
             arrowRefreshHeader.setIndicatorColor(ContextCompat.getColor(getContext(),indicatorColor));
             arrowRefreshHeader.setHintTextColor(hintColor);
@@ -599,6 +696,8 @@ public class LRecyclerView extends RecyclerView {
                 staggeredGridLayoutManager.findFirstCompletelyVisibleItemPositions(lastPositions);
                 firstVisibleItemPosition = findMax(lastPositions);
                 break;
+            default:
+                break;
         }
 
         // 根据类型来计算出第一个可见的item的位置，由此判断是否触发到底部的监听器
@@ -622,7 +721,7 @@ public class LRecyclerView extends RecyclerView {
             int totalItemCount = layoutManager.getItemCount();
             if (visibleItemCount > 0
                     && lastVisibleItemPosition >= totalItemCount - 1
-                    && totalItemCount > visibleItemCount
+                    && (isCritical ? totalItemCount >= visibleItemCount : totalItemCount > visibleItemCount)
                     && !isNoMore
                     && !mRefreshing) {
 
@@ -701,7 +800,7 @@ public class LRecyclerView extends RecyclerView {
             }
             p = p.getParent();
         }
-        if(null != p && p instanceof CoordinatorLayout) {
+        if(p instanceof CoordinatorLayout) {
             CoordinatorLayout coordinatorLayout = (CoordinatorLayout)p;
             final int childCount = coordinatorLayout.getChildCount();
             for (int i = childCount - 1; i >= 0; i--) {

@@ -49,14 +49,14 @@ allprojects {
 Step 2. 在你的module的build.gradle文件中增加LRecyclerView依赖。
 
 ```groovy
-compile 'com.github.jdsjlzx:LRecyclerView:1.5.0'
+implementation 'com.github.jdsjlzx:LRecyclerView:1.5.4.3'
 ```
 
 LRecyclerView requires at minimum Java 7 or Android 4.0.
 
 ## JavaDoc
 
-https://jitpack.io/com/github/jdsjlzx/LRecyclerView/1.5.0/javadoc/
+https://jitpack.io/com/github/jdsjlzx/LRecyclerView/1.5.4.3/javadoc/
 
 ##项目简述
 1. 下拉刷新、滑动到底部自动加载下页数据； 
@@ -552,7 +552,7 @@ QQ交流群2：250468947
 
 觉得本框架对你有帮助，不妨打赏赞助我一下，让我有动力走的更远。
 
-<img src="http://img.blog.csdn.net/20160812223409875" width=280 height=280 />
+<img src="https://raw.githubusercontent.com/jdsjlzx/LRecyclerView/master/art/wechat.png" width=280 height=280 />
 
 支付宝<br><br>
 <img src="https://raw.githubusercontent.com/jdsjlzx/LRecyclerView/master/art/alipay.jpg" width=280 height=329 />

@@ -6,6 +6,7 @@ public class CommonActivity extends BaseMainActivity {
 
     private static final Class<?>[] ACTIVITY = {
             LinearLayoutActivity.class,
+            SpecialLinearLayoutActivity.class,
             EndlessLinearLayoutActivity.class,
             EndlessGridLayoutActivity.class,
             EndlessStaggeredGridLayoutActivity.class,
@@ -20,10 +21,13 @@ public class CommonActivity extends BaseMainActivity {
             AlphaChangeActivity.class,
             BannerHeaderLayoutActivity.class,
             QzoneHeaderActivity.class,
-            MomentsHeaderActivity.class};
+            MomentsHeaderActivity.class,
+            CustomLoadingFootActivity.class,
+            ClickLoadingFootActivity.class};
 
     private static final String[] TITLE = {
             "LinearLayoutSample",
+            "SpecialLinearLayoutActivity",
             "EndlessLinearLayoutActivity",
             "EndlessGridLayoutActivity",
             "EndlessStaggeredGridLayoutActivity",
@@ -37,7 +41,9 @@ public class CommonActivity extends BaseMainActivity {
             "AlphaChangeActivity",
             "BannerHeaderLayoutActivity",
             "QzoneHeaderActivity",
-            "MomentsHeaderActivity"};
+            "MomentsHeaderActivity",
+            "CustomLoadingFootActivity",
+            "ClickLoadingFootActivity"};
 
     public Class<?>[] getActivitys() {
         return ACTIVITY;

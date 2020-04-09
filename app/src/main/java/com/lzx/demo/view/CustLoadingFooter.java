@@ -1,7 +1,6 @@
-package com.github.jdsjlzx.view;
+package com.lzx.demo.view;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
 import android.util.AttributeSet;
@@ -12,14 +11,15 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import com.github.jdsjlzx.R;
 import com.github.jdsjlzx.interfaces.ILoadMoreFooter;
 import com.github.jdsjlzx.interfaces.OnLoadMoreListener;
 import com.github.jdsjlzx.interfaces.OnNetWorkErrorListener;
 import com.github.jdsjlzx.progressindicator.AVLoadingIndicatorView;
 import com.github.jdsjlzx.recyclerview.ProgressStyle;
+import com.github.jdsjlzx.view.SimpleViewSwitcher;
+import com.lzx.demo.R;
 
-public class LoadingFooter extends RelativeLayout implements ILoadMoreFooter {
+public class CustLoadingFooter extends RelativeLayout implements ILoadMoreFooter {
 
     protected State mState = State.Normal;
     private View mLoadingView;
@@ -34,32 +34,32 @@ public class LoadingFooter extends RelativeLayout implements ILoadMoreFooter {
     private String noNetWorkHint;
     private int style;
     private int indicatorColor;
-    private int hintColor = R.color.color_hint;
+    private int hintColor = R.color.colorAccent;
 
-    public LoadingFooter(Context context) {
+    public CustLoadingFooter(Context context) {
         super(context);
         init();
     }
 
-    public LoadingFooter(Context context, AttributeSet attrs) {
+    public CustLoadingFooter(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
     }
 
-    public LoadingFooter(Context context, AttributeSet attrs, int defStyleAttr) {
+    public CustLoadingFooter(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
     }
 
     public void init() {
 
-        inflate(getContext(), R.layout.layout_recyclerview_footer, this);
+        inflate(getContext(), R.layout.view_cust_recyclerview_footer, this);
         setOnClickListener(null);
 
         onReset();//初始为隐藏状态
 
-        indicatorColor = Color.parseColor("#FFB5B5B5");
-        style = ProgressStyle.BallPulse;
+        indicatorColor = ContextCompat.getColor(getContext(), R.color.colorAccent);
+        style = ProgressStyle.SysProgress;
     }
 
     public void setLoadingHint(String hint) {
@@ -137,11 +137,11 @@ public class LoadingFooter extends RelativeLayout implements ILoadMoreFooter {
 
     @Override
     public void setNetworkErrorViewClickListener(final OnNetWorkErrorListener listener) {
-        setState(State.NetWorkError);
+        setState(ILoadMoreFooter.State.NetWorkError);
         setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                setState(State.Loading);
+                setState(ILoadMoreFooter.State.Loading);
                 listener.reload();
             }
         });
@@ -262,7 +262,5 @@ public class LoadingFooter extends RelativeLayout implements ILoadMoreFooter {
                 break;
         }
     }
-
-
 
 }
